@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Valutatto - Agenda de turnos</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Valutatto">
+<meta name="theme-color" content="#18100f">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+  :root {
+    --bg: #18100f;
+    --surface: #241a18;
+    --surface-2: #2e211e;
+    --text: #f3ece6;
+    --muted: #a99a92;
+    --accent: #c9502f;
+    --accent-soft: #c9502f33;
+    --border: #3a2a26;
+    --danger: #8a3a2c;
+    --good: #5a8f6b;
+    --good-soft: #5a8f6b26;
+    --info: #4f8fa3;
+    --info-soft: #4f8fa326;
+    --gold: #c99a3f;
+    --gold-soft: #c99a3f26;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'Inter', -apple-system, sans-serif;
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f0ea;
+    --surface: #ffffff;
+    --surface-2: #f1e8e0;
+    --text: #221714;
+    --muted: #7a6a62;
+    --accent: #c9502f;
+    --accent-soft: #c9502f22;
+    --border: #e3d5cb;
+    --danger: #b23b26;
+    --good: #3f7a52;
+    --good-soft: #3f7a521a;
+    --info: #2f6d80;
+    --info-soft: #2f6d801a;
+    --gold: #a97f2b;
+    --gold-soft: #a97f2b1a;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  #app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px 16px 80px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .logo-wrap {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .logo-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    overflow: hidden;
+  }
+  .logo-circle img { width: 100%; height: 100%; object-fit: cover; }
+  .logo-edit-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg);
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 26px;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+  h1 .dot { color: var(--accent); }
+  #studioNameLabel {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .search-wrap { position: relative; margin-bottom: 14px; }
+  #searchInput {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-size: 14px;
+    font-family: var(--font-body);
+  }
+  #searchInput::placeholder { color: var(--muted); }
+  .search-results {
+    position: absolute;
+    left: 0; right: 0; top: calc(100% + 6px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 5;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  .search-results.hidden { display: none; }
+  .search-result-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+  }
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item:active { background: var(--surface-2); }
+  .search-result-item .sr-name { font-weight: 600; }
+  .search-result-item .sr-meta { color: var(--muted); font-size: 12px; margin-top: 2px; text-transform: capitalize; }
+  .search-empty { padding: 12px 14px; color: var(--muted); font-size: 13px; }
+
+  .view-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+  }
+  .view-tabs button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 9px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .view-tabs button.active { background: var(--accent); color: #fff; }
+
+  .top-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-display);
+    font-size: 17px;
+  }
+  .month-nav button, .icon-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .month-nav button:active, .icon-btn:active { transform: scale(0.95); }
+  #monthLabel { min-width: 132px; text-align: center; text-transform: capitalize; }
+  #todayBtn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-family: var(--font-body);
+    cursor: pointer;
+  }
+
+  .weekdays, .calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .weekdays {
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .day-cell {
+    position: relative;
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text);
+    padding: 2px;
+    min-height: 44px;
+  }
+  .day-cell.empty { background: transparent; cursor: default; }
+  .day-cell.today { border-color: var(--accent); }
+  .day-cell.has-appts { background: var(--surface-2); }
+  .day-cell .count {
+    margin-top: 3px;
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .day-cell.selected { background: var(--accent); color: #fff; }
+  .day-cell.selected .count { color: #fff; }
+
+  .day-panel {
+    margin-top: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .day-panel.hidden { display: none; }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .panel-header h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 18px;
+    margin: 0;
+    text-transform: capitalize;
+  }
+
+  .empty-state {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 10px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .appt-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .appt-card {
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .appt-time {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--accent);
+    min-width: 48px;
+  }
+  .appt-info { flex: 1; min-width: 0; }
+  .appt-name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .appt-name { font-weight: 600; font-size: 14px; }
+  .appt-date-label {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 2px;
+    text-transform: capitalize;
+  }
+  .tag-pill {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .tag-pill.nuevo { background: var(--gold-soft); color: var(--gold); }
+  .tag-pill.recurrente { background: var(--info-soft); color: var(--info); }
+  .appt-meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .appt-notes {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 5px;
+    line-height: 1.4;
+  }
+  .ref-thumb {
+    margin-top: 8px;
+    max-width: 90px;
+    max-height: 90px;
+    border-radius: 8px;
+    object-fit: cover;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    display: block;
+  }
+  .ref-thumb.expanded { max-width: 100%; max-height: 320px; width: 100%; }
+
+  .appt-money {
+    font-size: 12px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .money-line { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); }
+  .money-line .val { color: var(--text); font-weight: 500; }
+  .payment-history { display: flex; flex-direction: column; gap: 3px; margin: 2px 0; }
+  .payment-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11.5px;
+  }
+  .payment-row .pr-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 0 2px; }
+  .status-pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin-top: 2px;
+    align-self: flex-start;
+  }
+  .status-pill.paid { background: var(--good-soft); color: var(--good); }
+
+  .add-payment-toggle {
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    font-size: 11.5px;
+    border-radius: 7px;
+    padding: 5px 9px;
+    cursor: pointer;
+    margin-top: 6px;
+    align-self: flex-start;
+  }
+  .mini-payment-form {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+  .mini-payment-form input, .mini-payment-form select {
+    padding: 6px 8px;
+    font-size: 12.5px;
+    width: auto;
+    flex: 1;
+    min-width: 70px;
+  }
+  .mini-payment-form button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .appt-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 6px;
+    line-height: 1;
+  }
+  .appt-del:hover { color: var(--danger); }
+
+  form#apptForm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 4px;
+  }
+  form#apptForm .row { display: flex; gap: 8px; }
+  form#apptForm .row > * { flex: 1; }
+  .section-label {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin: 6px 0 -2px;
+  }
+  input, select, textarea {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 10px;
+    font-size: 14px;
+    font-family: var(--font-body);
+    width: 100%;
+  }
+  textarea { resize: vertical; min-height: 50px; }
+  input::placeholder, textarea::placeholder { color: var(--muted); }
+  form#apptForm button[type="submit"] {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font-body);
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  form#apptForm button[type="submit"]:active { opacity: 0.85; }
+  form#apptForm button[type="submit"]:disabled { opacity: 0.5; cursor: default; }
+
+  .ref-dropzone {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 12.5px;
+    color: var(--muted);
+    text-align: center;
+    cursor: pointer;
+    outline: none;
+  }
+  .ref-dropzone:focus { border-color: var(--accent); }
+  .ref-preview-wrap { position: relative; display: inline-block; margin-top: 6px; }
+  .ref-preview-wrap img { max-width: 120px; max-height: 120px; border-radius: 8px; display: block; border: 1px solid var(--border); }
+  .ref-remove-btn {
+    position: absolute;
+    top: -6px; right: -6px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--danger);
+    color: #fff;
+    border: none;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .form-payment-list { display: flex; flex-direction: column; gap: 5px; }
+  .form-payment-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 6px 9px;
+    font-size: 12.5px;
+  }
+  .form-payment-row button {
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; width: auto; padding: 0 2px;
+  }
+  .add-payment-row {
+    display: flex;
+    gap: 6px;
+  }
+  .add-payment-row input, .add-payment-row select { font-size: 13px; padding: 8px; }
+  .add-payment-row button {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 0 12px;
+    font-weight: 600;
+    cursor: pointer;
+    width: auto;
+    white-space: nowrap;
+  }
+  .pending-preview { font-size: 12px; color: var(--muted); }
+
+  .contact-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .contact-btn:active { transform: scale(0.97); }
+
+  .summary-stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .stat-chip {
+    flex: 1;
+    min-width: 96px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .stat-chip .num {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 19px;
+    color: var(--accent);
+    display: block;
+  }
+  .stat-chip .label {
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 2px;
+    display: block;
+  }
+
+  .upcoming-group { margin-bottom: 18px; }
+  .upcoming-group-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 8px;
+    text-transform: capitalize;
+    color: var(--text);
+  }
+  .upcoming-group-title.is-today { color: var(--accent); }
+
+  .list-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  table.list-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    min-width: 620px;
+  }
+  table.list-table thead th {
+    background: var(--surface-2);
+    color: var(--muted);
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    text-align: left;
+    padding: 9px 10px;
+    position: sticky;
+    top: 0;
+    white-space: nowrap;
+  }
+  table.list-table td {
+    padding: 9px 10px;
+    border-top: 1px solid var(--border);
+    white-space: nowrap;
+    color: var(--text);
+  }
+  table.list-table tbody tr { background: var(--surface); cursor: pointer; }
+  table.list-table tbody tr:nth-child(even) { background: var(--surface-2); }
+  table.list-table tbody tr:active { opacity: 0.8; }
+  table.list-table td.tl-name { font-weight: 600; }
+  table.list-table td.tl-pending.is-pending { color: var(--accent); font-weight: 600; }
+  table.list-table td.tl-pending.is-paid { color: var(--good); font-weight: 600; }
+  table.list-table .tl-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  table.list-table .tl-del:hover { color: var(--danger); }
+
+  .status-msg {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 30px 0;
+  }
+  .hidden { display: none !important; }
+
+  /* ---- login screen ---- */
+  #loginScreen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  #loginScreen .login-box {
+    width: 100%;
+    max-width: 340px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 22px;
+  }
+  #loginScreen h1 {
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  #loginScreen p.sub {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 20px;
+  }
+  #loginForm { display: flex; flex-direction: column; gap: 10px; }
+  #loginForm button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font-body);
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  #loginForm button:disabled { opacity: 0.6; }
+  #loginError {
+    color: var(--danger);
+    font-size: 12.5px;
+    text-align: center;
+    min-height: 16px;
+  }
+  #logoutBtn {
+    display: block;
+    margin: 24px auto 0;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>Valutatto<span class="dot">.</span></h1>
+    <p class="sub">Agenda de turnos del estudio</p>
+    <form id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email" required autocomplete="username">
+      <input type="password" id="loginPassword" placeholder="Contraseña" required autocomplete="current-password">
+      <button type="submit" id="loginSubmitBtn">Entrar</button>
+      <div id="loginError"></div>
+    </form>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="logo-wrap" id="logoWrap">
+      <div class="logo-circle" id="logoCircle">✒️</div>
+      <div class="logo-edit-badge">✎</div>
+      <input type="file" id="logoInput" accept="image/*" class="hidden">
+    </div>
+    <div>
+      <h1>Turnos<span class="dot">.</span></h1>
+      <div id="studioNameLabel">Tocá el logo para poner la foto de tu estudio</div>
+    </div>
+  </header>
+
+  <div class="search-wrap">
+    <input type="text" id="searchInput" placeholder="Buscar cliente por nombre...">
+    <div id="searchResults" class="search-results hidden"></div>
+  </div>
+
+  <div class="view-tabs">
+    <button class="tab active" id="tabCalendar" data-view="calendar">Calendario</button>
+    <button class="tab" id="tabUpcoming" data-view="upcoming">Próximos</button>
+    <button class="tab" id="tabList" data-view="list">Listado</button>
+  </div>
+
+  <div id="calendarView">
+    <div class="top-controls">
+      <div class="month-nav">
+        <button id="prevMonth" aria-label="Mes anterior">‹</button>
+        <span id="monthLabel"></span>
+        <button id="nextMonth" aria-label="Mes siguiente">›</button>
+      </div>
+      <button id="todayBtn">Hoy</button>
+    </div>
+
+    <div class="weekdays">
+      <div>D</div><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div>
+    </div>
+    <div class="calendar" id="calendar"></div>
+
+    <div class="day-panel hidden" id="dayPanel">
+      <div class="panel-header">
+        <h2 id="panelDate"></h2>
+        <button class="icon-btn" id="closePanel" aria-label="Cerrar">✕</button>
+      </div>
+      <div id="apptListWrap"></div>
+      <form id="apptForm">
+        <div class="row">
+          <input type="time" id="apptTime" required>
+          <input type="text" id="apptName" placeholder="Nombre del cliente" required maxlength="60">
+        </div>
+        <div class="row">
+          <select id="apptContactType">
+            <option value="whatsapp">WhatsApp</option>
+            <option value="instagram">Instagram</option>
+            <option value="otro">Otro</option>
+          </select>
+          <input type="text" id="apptContactValue" placeholder="Número o @usuario" maxlength="60">
+        </div>
+        <div class="row">
+          <select id="apptClientType">
+            <option value="nuevo">Cliente nuevo</option>
+            <option value="recurrente">Cliente recurrente</option>
+          </select>
+        </div>
+
+        <div class="section-label">Referencia del diseño (opcional)</div>
+        <div class="ref-dropzone" id="refDropzone" tabindex="0">
+          Tocá para subir una imagen, o pegala acá (Ctrl+V)
+        </div>
+        <input type="file" id="refFileInput" accept="image/*" class="hidden">
+        <div id="refPreviewWrap" class="ref-preview-wrap hidden">
+          <img id="refPreviewImg" src="">
+          <button type="button" class="ref-remove-btn" id="refRemoveBtn">✕</button>
+        </div>
+
+        <div class="section-label">Pagos</div>
+        <div class="row">
+          <input type="number" id="apptBudget" placeholder="Presupuesto total ($)" min="0" step="0.01">
+        </div>
+        <div id="formPaymentList" class="form-payment-list"></div>
+        <div class="add-payment-row">
+          <input type="number" id="newPayAmount" placeholder="Monto $" min="0" step="0.01">
+          <select id="newPayMethod">
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+          <input type="text" id="newPayLabel" placeholder="Seña, cuota..." maxlength="24">
+          <button type="button" id="addPaymentBtn">+</button>
+        </div>
+        <div class="pending-preview" id="pendingPreview"></div>
+
+        <textarea id="apptNotes" placeholder="Diseño, zona del cuerpo, tamaño..." maxlength="300"></textarea>
+        <button type="submit" id="submitBtn">Agregar turno</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="upcomingView" class="hidden">
+    <div id="upcomingSummary"></div>
+    <div id="upcomingList"></div>
+  </div>
+
+  <div id="listView" class="hidden">
+    <div class="list-table-wrap">
+      <table class="list-table" id="listTable">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Cliente</th>
+            <th>Tipo</th>
+            <th>Contacto</th>
+            <th>Presupuesto</th>
+            <th>Pagado</th>
+            <th>Pendiente</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="listTableBody"></tbody>
+      </table>
+    </div>
+    <div id="listEmptyState" class="empty-state hidden">Todavía no cargaste ningún turno.</div>
+  </div>
+
+  <div id="statusMsg" class="status-msg" style="display:none;"></div>
+  <button id="logoutBtn">Cerrar sesión</button>
+</div>
+
+<script>
+(function () {
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+  let db = null;
+  let col = null;
+  let appointments = [];
+  let viewYear, viewMonth;
+  let selectedISO = null;
+  let currentView = 'calendar';
+  let formPayments = [];
+  let pendingRefImage = '';
+
+  const todayD = new Date();
+  viewYear = todayD.getFullYear();
+  viewMonth = todayD.getMonth();
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function isoOf(y, m, d) { return `${y}-${pad(m + 1)}-${pad(d)}`; }
+  const todayISO = isoOf(todayD.getFullYear(), todayD.getMonth(), todayD.getDate());
+
+  const calendarEl = document.getElementById('calendar');
+  const monthLabelEl = document.getElementById('monthLabel');
+  const dayPanelEl = document.getElementById('dayPanel');
+  const panelDateEl = document.getElementById('panelDate');
+  const apptListWrap = document.getElementById('apptListWrap');
+  const form = document.getElementById('apptForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  const searchInput = document.getElementById('searchInput');
+  const searchResults = document.getElementById('searchResults');
+  const calendarViewEl = document.getElementById('calendarView');
+  const upcomingViewEl = document.getElementById('upcomingView');
+  const upcomingListEl = document.getElementById('upcomingList');
+  const upcomingSummaryEl = document.getElementById('upcomingSummary');
+  const tabCalendar = document.getElementById('tabCalendar');
+  const tabUpcoming = document.getElementById('tabUpcoming');
+  const tabList = document.getElementById('tabList');
+  const listViewEl = document.getElementById('listView');
+  const listTableBody = document.getElementById('listTableBody');
+  const listEmptyState = document.getElementById('listEmptyState');
+  const logoWrap = document.getElementById('logoWrap');
+  const logoCircle = document.getElementById('logoCircle');
+  const logoInput = document.getElementById('logoInput');
+  const studioNameLabel = document.getElementById('studioNameLabel');
+  const refDropzone = document.getElementById('refDropzone');
+  const refFileInput = document.getElementById('refFileInput');
+  const refPreviewWrap = document.getElementById('refPreviewWrap');
+  const refPreviewImg = document.getElementById('refPreviewImg');
+  const refRemoveBtn = document.getElementById('refRemoveBtn');
+  const formPaymentListEl = document.getElementById('formPaymentList');
+  const newPayAmount = document.getElementById('newPayAmount');
+  const newPayMethod = document.getElementById('newPayMethod');
+  const newPayLabel = document.getElementById('newPayLabel');
+  const addPaymentBtn = document.getElementById('addPaymentBtn');
+  const pendingPreview = document.getElementById('pendingPreview');
+  const apptBudgetInput = document.getElementById('apptBudget');
+
+  function renderMonthLabel() {
+    monthLabelEl.textContent = `${MESES[viewMonth]} ${viewYear}`;
+  }
+
+  function apptsFor(iso) {
+    return appointments
+      .filter(a => a.date === iso)
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  }
+
+  function formatDateLabel(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const weekday = dateObj.toLocaleDateString('es-ES', { weekday: 'long' });
+    return `${weekday} ${d} de ${MESES[m - 1]}`;
+  }
+
+  function fmtMoney(n) {
+    return '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function methodLabel(m) {
+    if (m === 'efectivo') return 'Efectivo';
+    if (m === 'transferencia') return 'Transferencia';
+    return '';
+  }
+
+  function contactLabel(type) {
+    if (type === 'whatsapp') return 'WhatsApp';
+    if (type === 'instagram') return 'Instagram';
+    return 'Otro';
+  }
+
+  function buildContactLink(a) {
+    const value = (a.contactValue || '').trim();
+    if (!value) return null;
+    if (a.contactType === 'whatsapp') {
+      const digits = value.replace(/[^\d]/g, '');
+      if (!digits) return null;
+      return { href: `https://wa.me/${digits}`, label: 'WhatsApp', icon: '💬' };
+    }
+    if (a.contactType === 'instagram') {
+      const handle = value.replace(/^@/, '').trim();
+      if (!handle) return null;
+      return { href: `https://instagram.com/${encodeURIComponent(handle)}`, label: 'Instagram', icon: '📸' };
+    }
+    return null;
+  }
+
+  // ---------- image compression ----------
+  function compressImageFile(file, maxDim, quality) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type || file.type.indexOf('image/') !== 0) {
+        reject(new Error('not-image'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          let w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
+            else { w = Math.round(w * maxDim / h); h = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => reject(new Error('img-load-failed'));
+        img.src = reader.result;
+      };
+      reader.onerror = () => reject(new Error('read-failed'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ---------- color palette extraction from the logo ----------
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if (max === min) { h = 0; s = 0; }
+    else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        default: h = (r - g) / d + 4;
+      }
+      h /= 6;
+    }
+    return [h, s, l];
+  }
+
+  function hslToRgbArr(h, s, l) {
+    h = (((h % 360) + 360) % 360) / 360;
+    let r, g, b;
+    if (s === 0) { r = g = b = l; }
+    else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1 / 3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1 / 3);
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  }
+
+  function hslToHex(h, s, l) {
+    const [r, g, b] = hslToRgbArr(h, s, l);
+    return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+  function hslToRgba(h, s, l, a) {
+    const [r, g, b] = hslToRgbArr(h, s, l);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function extractPalette(img) {
+    const size = 40;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, size, size);
+    let data;
+    try {
+      data = ctx.getImageData(0, 0, size, size).data;
+    } catch (e) {
+      return null;
+    }
+    let sumSin = 0, sumCos = 0, sumSat = 0, count = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+      if (a < 128) continue;
+      const [h, s, l] = rgbToHsl(r, g, b);
+      if (s < 0.15 || l < 0.12 || l > 0.92) continue;
+      const rad = h * 2 * Math.PI;
+      sumSin += Math.sin(rad) * s;
+      sumCos += Math.cos(rad) * s;
+      sumSat += s;
+      count++;
+    }
+    if (count < 15) return null;
+    let hue = Math.atan2(sumSin, sumCos) / (2 * Math.PI);
+    if (hue < 0) hue += 1;
+    let avgSat = sumSat / count;
+    avgSat = Math.min(Math.max(avgSat, 0.4), 0.75);
+    return { hueDeg: hue * 360, sat: avgSat };
+  }
+
+  function applyPalette(p) {
+    const root = document.documentElement;
+    root.style.setProperty('--accent', hslToHex(p.hueDeg, p.sat, 0.49));
+    root.style.setProperty('--accent-soft', hslToRgba(p.hueDeg, p.sat, 0.49, 0.2));
+    const goldHue = (p.hueDeg + 35) % 360;
+    root.style.setProperty('--gold', hslToHex(goldHue, Math.min(p.sat, 0.65), 0.5));
+    root.style.setProperty('--gold-soft', hslToRgba(goldHue, Math.min(p.sat, 0.65), 0.5, 0.16));
+    const infoHue = (p.hueDeg - 35 + 360) % 360;
+    root.style.setProperty('--info', hslToHex(infoHue, Math.min(p.sat, 0.55), 0.48));
+    root.style.setProperty('--info-soft', hslToRgba(infoHue, Math.min(p.sat, 0.55), 0.48, 0.16));
+  }
+
+  function resetPalette() {
+    const root = document.documentElement;
+    ['--accent', '--accent-soft', '--gold', '--gold-soft', '--info', '--info-soft'].forEach(v => root.style.removeProperty(v));
+  }
+
+  function applyPaletteFromDataUrl(dataUrl) {
+    if (!dataUrl) { resetPalette(); return; }
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const palette = extractPalette(img);
+        if (palette) applyPalette(palette);
+      } catch (e) { /* keep default colors */ }
+    };
+    img.onerror = () => {};
+    img.src = dataUrl;
+  }
+
+  // ---------- logo (portada del estudio) ----------
+  function renderLogo(logoDataUrl) {
+    if (logoDataUrl) {
+      logoCircle.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = logoDataUrl;
+      logoCircle.appendChild(img);
+      studioNameLabel.textContent = 'Tocá el logo para cambiarlo';
+      applyPaletteFromDataUrl(logoDataUrl);
+    } else {
+      logoCircle.innerHTML = '✒️';
+      studioNameLabel.textContent = 'Tocá el logo para poner la foto de tu estudio';
+      resetPalette();
+    }
+  }
+
+  logoWrap.addEventListener('click', () => logoInput.click());
+  logoInput.addEventListener('change', async () => {
+    const file = logoInput.files[0];
+    if (!file || !db) return;
+    try {
+      const dataUrl = await compressImageFile(file, 300, 0.7);
+      if (dataUrl.length > 220000) {
+        showStatus('Esa imagen es muy pesada, probá con otra.');
+        return;
+      }
+      await db.doc('config/studio').set({ logo: dataUrl });
+    } catch (e) {
+      showStatus('No se pudo guardar el logo. Probá con otra imagen.');
+    } finally {
+      logoInput.value = '';
+    }
+  });
+
+  // ---------- reference image (form, before saving) ----------
+  refDropzone.addEventListener('click', () => refFileInput.click());
+  refFileInput.addEventListener('change', () => handleRefFile(refFileInput.files[0]));
+  refDropzone.addEventListener('paste', (e) => handlePasteEvent(e));
+  document.addEventListener('paste', (e) => {
+    if (!dayPanelEl.classList.contains('hidden') && document.activeElement !== searchInput) {
+      handlePasteEvent(e);
+    }
+  });
+
+  function handlePasteEvent(e) {
+    const items = (e.clipboardData || {}).items || [];
+    for (const item of items) {
+      if (item.kind === 'file' && item.type.indexOf('image/') === 0) {
+        const file = item.getAsFile();
+        handleRefFile(file);
+        e.preventDefault();
+        break;
+      }
+    }
+  }
+
+  async function handleRefFile(file) {
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageFile(file, 720, 0.6);
+      if (dataUrl.length > 230000) {
+        showStatus('Esa imagen es muy pesada, probá con otra más liviana.');
+        return;
+      }
+      pendingRefImage = dataUrl;
+      refPreviewImg.src = dataUrl;
+      refPreviewWrap.classList.remove('hidden');
+      refDropzone.classList.add('hidden');
+    } catch (e) {
+      showStatus('No se pudo cargar esa imagen.');
+    }
+  }
+
+  refRemoveBtn.addEventListener('click', () => {
+    pendingRefImage = '';
+    refPreviewWrap.classList.add('hidden');
+    refDropzone.classList.remove('hidden');
+    refFileInput.value = '';
+  });
+
+  // ---------- payments (form, before saving) ----------
+  function renderFormPayments() {
+    formPaymentListEl.innerHTML = '';
+    formPayments.forEach((p, idx) => {
+      const row = document.createElement('div');
+      row.className = 'form-payment-row';
+      row.innerHTML = `<span></span><button type="button">✕</button>`;
+      row.querySelector('span').textContent = `${methodLabel(p.method)} · ${fmtMoney(p.amount)}${p.label ? ' · ' + p.label : ''}`;
+      row.querySelector('button').addEventListener('click', () => {
+        formPayments.splice(idx, 1);
+        renderFormPayments();
+      });
+      formPaymentListEl.appendChild(row);
+    });
+    updatePendingPreview();
+  }
+
+  function updatePendingPreview() {
+    const budget = Number(apptBudgetInput.value) || 0;
+    const paid = formPayments.reduce((s, p) => s + p.amount, 0);
+    if (!budget) { pendingPreview.textContent = ''; return; }
+    const pending = Math.max(budget - paid, 0);
+    pendingPreview.textContent = pending <= 0
+      ? 'Quedaría pagado en su totalidad.'
+      : `Pagado hasta ahora: ${fmtMoney(paid)} · Quedaría pendiente: ${fmtMoney(pending)}`;
+  }
+
+  apptBudgetInput.addEventListener('input', updatePendingPreview);
+
+  addPaymentBtn.addEventListener('click', () => {
+    const amount = Number(newPayAmount.value);
+    if (!amount || amount <= 0) return;
+    formPayments.push({
+      amount,
+      method: newPayMethod.value,
+      label: newPayLabel.value.trim(),
+      ts: Date.now()
+    });
+    newPayAmount.value = '';
+    newPayLabel.value = '';
+    renderFormPayments();
+  });
+
+  function resetFormExtras() {
+    formPayments = [];
+    pendingRefImage = '';
+    refPreviewWrap.classList.add('hidden');
+    refDropzone.classList.remove('hidden');
+    refFileInput.value = '';
+    renderFormPayments();
+  }
+
+  // ---------- calendar ----------
+  function renderCalendar() {
+    renderMonthLabel();
+    calendarEl.innerHTML = '';
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) {
+      const empty = document.createElement('div');
+      empty.className = 'day-cell empty';
+      calendarEl.appendChild(empty);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = isoOf(viewYear, viewMonth, d);
+      const cell = document.createElement('div');
+      cell.className = 'day-cell';
+      if (iso === todayISO) cell.classList.add('today');
+      if (iso === selectedISO) cell.classList.add('selected');
+      const count = apptsFor(iso).length;
+      if (count > 0) cell.classList.add('has-appts');
+
+      const num = document.createElement('div');
+      num.textContent = d;
+      cell.appendChild(num);
+
+      if (count > 0) {
+        const c = document.createElement('div');
+        c.className = 'count';
+        c.textContent = count === 1 ? '1 turno' : `${count} turnos`;
+        cell.appendChild(c);
+      }
+
+      cell.addEventListener('click', () => selectDay(iso));
+      calendarEl.appendChild(cell);
+    }
+  }
+
+  // ---------- appointment card ----------
+  function paymentInfo(a) {
+    const budget = Number(a.budget) || 0;
+    const payments = Array.isArray(a.payments) ? a.payments : [];
+    const paid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const pending = Math.max(budget - paid, 0);
+    return { budget, payments, paid, pending };
+  }
+
+  async function addPaymentToAppt(id, payment) {
+    const appt = appointments.find(x => x.id === id);
+    if (!appt || !col) return;
+    const payments = Array.isArray(appt.payments) ? appt.payments.slice() : [];
+    payments.push(payment);
+    try {
+      await col.doc(id).update({ payments });
+    } catch (e) {
+      showStatus('No se pudo agregar el pago. Probá de nuevo.');
+    }
+  }
+
+  async function removePaymentFromAppt(id, idx) {
+    const appt = appointments.find(x => x.id === id);
+    if (!appt || !col) return;
+    const payments = Array.isArray(appt.payments) ? appt.payments.slice() : [];
+    payments.splice(idx, 1);
+    try {
+      await col.doc(id).update({ payments });
+    } catch (e) {
+      showStatus('No se pudo quitar el pago. Probá de nuevo.');
+    }
+  }
+
+  function buildApptCard(a, opts) {
+    opts = opts || {};
+    const card = document.createElement('div');
+    card.className = 'appt-card';
+    const pay = paymentInfo(a);
+
+    card.innerHTML = `
+      <div class="appt-time">${a.time || '--:--'}</div>
+      <div class="appt-info">
+        ${opts.showDate ? '<div class="appt-date-label"></div>' : ''}
+        <div class="appt-name-row">
+          <span class="appt-name"></span>
+          ${a.clientType ? `<span class="tag-pill ${a.clientType}">${a.clientType === 'recurrente' ? 'Recurrente' : 'Nuevo'}</span>` : ''}
+        </div>
+        <div class="appt-meta"><span></span></div>
+        ${a.notes ? '<div class="appt-notes"></div>' : ''}
+        ${a.referenceImage ? '<img class="ref-thumb" src="' + a.referenceImage + '">' : ''}
+        <div class="appt-money-slot"></div>
+      </div>
+      <button class="appt-del" title="Borrar turno">✕</button>
+    `;
+    if (opts.showDate) card.querySelector('.appt-date-label').textContent = formatDateLabel(a.date);
+    card.querySelector('.appt-name').textContent = a.name;
+    card.querySelector('.appt-meta span').textContent = contactLabel(a.contactType) + (a.contactValue ? ` · ${a.contactValue}` : '');
+    const contactLink = buildContactLink(a);
+    if (contactLink) {
+      const link = document.createElement('a');
+      link.className = 'contact-btn';
+      link.href = contactLink.href;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = `${contactLink.icon} ${contactLink.label}`;
+      card.querySelector('.appt-info').insertBefore(link, card.querySelector('.appt-notes') || card.querySelector('.ref-thumb') || card.querySelector('.appt-money-slot'));
+    }
+    if (a.notes) card.querySelector('.appt-notes').textContent = a.notes;
+
+    const refThumb = card.querySelector('.ref-thumb');
+    if (refThumb) refThumb.addEventListener('click', () => refThumb.classList.toggle('expanded'));
+
+    // money section
+    const moneySlot = card.querySelector('.appt-money-slot');
+    if (pay.budget) {
+      const moneyDiv = document.createElement('div');
+      moneyDiv.className = 'appt-money';
+
+      const budgetLine = document.createElement('div');
+      budgetLine.className = 'money-line';
+      budgetLine.innerHTML = '<span>Presupuesto</span><span class="val"></span>';
+      budgetLine.querySelector('.val').textContent = fmtMoney(pay.budget);
+      moneyDiv.appendChild(budgetLine);
+
+      if (pay.payments.length) {
+        const histWrap = document.createElement('div');
+        histWrap.className = 'payment-history';
+        pay.payments.forEach((p, idx) => {
+          const row = document.createElement('div');
+          row.className = 'payment-row';
+          row.innerHTML = '<span></span><button class="pr-del">✕</button>';
+          row.querySelector('span').textContent = `${methodLabel(p.method)} · ${fmtMoney(p.amount)}${p.label ? ' · ' + p.label : ''}`;
+          row.querySelector('.pr-del').addEventListener('click', () => removePaymentFromAppt(a.id, idx));
+          histWrap.appendChild(row);
+        });
+        moneyDiv.appendChild(histWrap);
+      }
+
+      const statusPill = document.createElement('span');
+      if (pay.pending <= 0) {
+        statusPill.className = 'status-pill paid';
+        statusPill.textContent = 'Pagado en su totalidad';
+      } else {
+        statusPill.className = 'status-pill';
+        statusPill.textContent = `Pendiente: ${fmtMoney(pay.pending)}`;
+      }
+      moneyDiv.appendChild(statusPill);
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'add-payment-toggle';
+      toggleBtn.textContent = '+ Agregar pago';
+      const miniForm = document.createElement('div');
+      miniForm.className = 'mini-payment-form hidden';
+      miniForm.innerHTML = `
+        <input type="number" placeholder="Monto $" min="0" step="0.01">
+        <select>
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+        </select>
+        <button type="button">Guardar</button>
+      `;
+      toggleBtn.addEventListener('click', () => miniForm.classList.toggle('hidden'));
+      const miniInput = miniForm.querySelector('input');
+      const miniSelect = miniForm.querySelector('select');
+      miniForm.querySelector('button').addEventListener('click', async () => {
+        const amount = Number(miniInput.value);
+        if (!amount || amount <= 0) return;
+        await addPaymentToAppt(a.id, { amount, method: miniSelect.value, label: '', ts: Date.now() });
+        miniInput.value = '';
+        miniForm.classList.add('hidden');
+      });
+      moneyDiv.appendChild(toggleBtn);
+      moneyDiv.appendChild(miniForm);
+
+      moneySlot.appendChild(moneyDiv);
+    }
+
+    card.querySelector('.appt-del').addEventListener('click', () => deleteAppt(a.id));
+    return card;
+  }
+
+  function renderDayPanel() {
+    if (!selectedISO) {
+      dayPanelEl.classList.add('hidden');
+      return;
+    }
+    dayPanelEl.classList.remove('hidden');
+    panelDateEl.textContent = formatDateLabel(selectedISO);
+
+    const list = apptsFor(selectedISO);
+    apptListWrap.innerHTML = '';
+
+    if (list.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Sin turnos anotados este día. Cargá uno abajo.';
+      apptListWrap.appendChild(empty);
+    } else {
+      const wrap = document.createElement('div');
+      wrap.className = 'appt-list';
+      list.forEach(a => wrap.appendChild(buildApptCard(a)));
+      apptListWrap.appendChild(wrap);
+    }
+  }
+
+  function renderUpcomingSummary(upcoming) {
+    upcomingSummaryEl.innerHTML = '';
+    if (upcoming.length === 0) return;
+    const todayCount = upcoming.filter(a => a.date === todayISO).length;
+    const totalPending = upcoming.reduce((s, a) => s + paymentInfo(a).pending, 0);
+
+    const stats = document.createElement('div');
+    stats.className = 'summary-stats';
+    stats.innerHTML = `
+      <div class="stat-chip"><span class="num">${upcoming.length}</span><span class="label">${upcoming.length === 1 ? 'turno próximo' : 'turnos próximos'}</span></div>
+      <div class="stat-chip"><span class="num">${todayCount}</span><span class="label">${todayCount === 1 ? 'turno hoy' : 'turnos hoy'}</span></div>
+      <div class="stat-chip"><span class="num">${fmtMoney(totalPending)}</span><span class="label">pendiente de cobro</span></div>
+    `;
+    upcomingSummaryEl.appendChild(stats);
+  }
+
+  function renderUpcoming() {
+    upcomingListEl.innerHTML = '';
+    const upcoming = appointments
+      .filter(a => a.date >= todayISO)
+      .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+
+    renderUpcomingSummary(upcoming);
+
+    if (upcoming.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'No hay turnos próximos cargados.';
+      upcomingListEl.appendChild(empty);
+      return;
+    }
+
+    const byDate = {};
+    upcoming.forEach(a => {
+      if (!byDate[a.date]) byDate[a.date] = [];
+      byDate[a.date].push(a);
+    });
+
+    Object.keys(byDate).sort().forEach(iso => {
+      const group = document.createElement('div');
+      group.className = 'upcoming-group';
+      const title = document.createElement('div');
+      title.className = 'upcoming-group-title' + (iso === todayISO ? ' is-today' : '');
+      title.textContent = (iso === todayISO ? 'Hoy · ' : '') + formatDateLabel(iso);
+      group.appendChild(title);
+      const wrap = document.createElement('div');
+      wrap.className = 'appt-list';
+      byDate[iso].forEach(a => wrap.appendChild(buildApptCard(a)));
+      group.appendChild(wrap);
+      upcomingListEl.appendChild(group);
+    });
+  }
+
+  function renderListTable() {
+    listTableBody.innerHTML = '';
+    const all = appointments.slice().sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+
+    if (all.length === 0) {
+      listEmptyState.classList.remove('hidden');
+      return;
+    }
+    listEmptyState.classList.add('hidden');
+
+    all.forEach(a => {
+      const pay = paymentInfo(a);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td></td>
+        <td>${a.time || '--:--'}</td>
+        <td class="tl-name"></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="tl-pending"></td>
+        <td><button class="tl-del" title="Borrar turno">✕</button></td>
+      `;
+      const cells = tr.querySelectorAll('td');
+      cells[0].textContent = formatDateLabel(a.date);
+      cells[2].textContent = a.name;
+      cells[3].textContent = a.clientType === 'recurrente' ? 'Recurrente' : (a.clientType === 'nuevo' ? 'Nuevo' : '—');
+      cells[4].textContent = contactLabel(a.contactType) + (a.contactValue ? ` · ${a.contactValue}` : '');
+      cells[5].textContent = pay.budget ? fmtMoney(pay.budget) : '—';
+      cells[6].textContent = pay.budget ? fmtMoney(pay.paid) : '—';
+      if (pay.budget) {
+        cells[7].textContent = pay.pending <= 0 ? 'Pagado' : fmtMoney(pay.pending);
+        cells[7].classList.add(pay.pending <= 0 ? 'is-paid' : 'is-pending');
+      } else {
+        cells[7].textContent = '—';
+      }
+      tr.addEventListener('click', (e) => {
+        if (e.target.closest('.tl-del')) return;
+        const [y, m] = a.date.split('-').map(Number);
+        viewYear = y;
+        viewMonth = m - 1;
+        switchView('calendar');
+        selectDay(a.date);
+      });
+      tr.querySelector('.tl-del').addEventListener('click', () => deleteAppt(a.id));
+      listTableBody.appendChild(tr);
+    });
+  }
+
+  function selectDay(iso) {
+    selectedISO = iso;
+    renderCalendar();
+    renderDayPanel();
+    dayPanelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function switchView(view) {
+    currentView = view;
+    tabCalendar.classList.toggle('active', view === 'calendar');
+    tabUpcoming.classList.toggle('active', view === 'upcoming');
+    tabList.classList.toggle('active', view === 'list');
+    calendarViewEl.classList.toggle('hidden', view !== 'calendar');
+    upcomingViewEl.classList.toggle('hidden', view !== 'upcoming');
+    listViewEl.classList.toggle('hidden', view !== 'list');
+    if (view === 'upcoming') renderUpcoming();
+    if (view === 'list') renderListTable();
+  }
+
+  tabCalendar.addEventListener('click', () => switchView('calendar'));
+  tabUpcoming.addEventListener('click', () => switchView('upcoming'));
+  tabList.addEventListener('click', () => switchView('list'));
+
+  function runSearch(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      searchResults.classList.add('hidden');
+      searchResults.innerHTML = '';
+      return;
+    }
+    const matches = appointments
+      .filter(a => a.name.toLowerCase().includes(q))
+      .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+      .slice(0, 20);
+
+    searchResults.innerHTML = '';
+    if (matches.length === 0) {
+      const div = document.createElement('div');
+      div.className = 'search-empty';
+      div.textContent = 'Sin resultados.';
+      searchResults.appendChild(div);
+    } else {
+      matches.forEach(a => {
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        item.innerHTML = '<div class="sr-name"></div><div class="sr-meta"></div>';
+        item.querySelector('.sr-name').textContent = a.name;
+        item.querySelector('.sr-meta').textContent = `${formatDateLabel(a.date)} · ${a.time || '--:--'}`;
+        item.addEventListener('click', () => {
+          const [y, m] = a.date.split('-').map(Number);
+          viewYear = y;
+          viewMonth = m - 1;
+          switchView('calendar');
+          selectDay(a.date);
+          searchInput.value = '';
+          searchResults.classList.add('hidden');
+        });
+        searchResults.appendChild(item);
+      });
+    }
+    searchResults.classList.remove('hidden');
+  }
+
+  searchInput.addEventListener('input', (e) => runSearch(e.target.value));
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-wrap')) searchResults.classList.add('hidden');
+  });
+
+  async function deleteAppt(id) {
+    if (!col) return;
+    try {
+      await col.doc(id).delete();
+    } catch (e) {
+      showStatus('No se pudo borrar el turno. Probá de nuevo.');
+    }
+  }
+
+  function showStatus(msg) {
+    statusMsg.style.display = 'block';
+    statusMsg.textContent = msg;
+    clearTimeout(showStatus._t);
+    showStatus._t = setTimeout(() => { statusMsg.style.display = 'none'; }, 4000);
+  }
+  function hideStatus() {
+    statusMsg.style.display = 'none';
+  }
+
+  document.getElementById('prevMonth').addEventListener('click', () => {
+    viewMonth--;
+    if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    renderCalendar();
+  });
+  document.getElementById('nextMonth').addEventListener('click', () => {
+    viewMonth++;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    renderCalendar();
+  });
+  document.getElementById('todayBtn').addEventListener('click', () => {
+    viewYear = todayD.getFullYear();
+    viewMonth = todayD.getMonth();
+    renderCalendar();
+  });
+  document.getElementById('closePanel').addEventListener('click', () => {
+    selectedISO = null;
+    renderCalendar();
+    renderDayPanel();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!col || !selectedISO) return;
+    const time = document.getElementById('apptTime').value;
+    const name = document.getElementById('apptName').value.trim();
+    const contactType = document.getElementById('apptContactType').value;
+    const contactValue = document.getElementById('apptContactValue').value.trim();
+    const clientType = document.getElementById('apptClientType').value;
+    const budget = apptBudgetInput.value;
+    const notes = document.getElementById('apptNotes').value.trim();
+    if (!time || !name) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Guardando...';
+    try {
+      await col.add({
+        date: selectedISO,
+        time,
+        name,
+        contactType,
+        contactValue,
+        clientType,
+        budget: budget ? Number(budget) : 0,
+        payments: formPayments.slice(),
+        referenceImage: pendingRefImage,
+        notes,
+        createdAt: Date.now()
+      });
+      form.reset();
+      resetFormExtras();
+    } catch (err) {
+      showStatus('No se pudo guardar el turno. Probá de nuevo en unos segundos.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Agregar turno';
+    }
+  });
+
+  const loginScreen = document.getElementById('loginScreen');
+  const appEl = document.getElementById('app');
+  const loginForm = document.getElementById('loginForm');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginError = document.getElementById('loginError');
+  const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  let appStarted = false;
+  let stopAppointments = null;
+  let stopStudio = null;
+
+  function friendlyAuthError(code) {
+    if (code === 'auth/invalid-email') return 'Ese email no es válido.';
+    if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+      return 'Email o contraseña incorrectos.';
+    }
+    if (code === 'auth/too-many-requests') return 'Demasiados intentos. Probá de nuevo en unos minutos.';
+    return 'No se pudo iniciar sesión. Probá de nuevo.';
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.textContent = '';
+    loginSubmitBtn.disabled = true;
+    loginSubmitBtn.textContent = 'Entrando...';
+    try {
+      await firebase.auth().signInWithEmailAndPassword(loginEmail.value.trim(), loginPassword.value);
+    } catch (err) {
+      loginError.textContent = friendlyAuthError(err.code);
+    } finally {
+      loginSubmitBtn.disabled = false;
+      loginSubmitBtn.textContent = 'Entrar';
+    }
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    firebase.auth().signOut();
+  });
+
+  function startApp() {
+    if (appStarted) return;
+    appStarted = true;
+    db = firebase.firestore();
+    renderCalendar();
+    renderFormPayments();
+    col = db.collection('turnos');
+    stopAppointments = col.orderBy('date', 'asc').onSnapshot(
+      (snap) => {
+        hideStatus();
+        appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderCalendar();
+        renderDayPanel();
+        if (currentView === 'upcoming') renderUpcoming();
+        if (currentView === 'list') renderListTable();
+        if (searchInput.value.trim()) runSearch(searchInput.value);
+      },
+      (err) => {
+        showStatus('Se perdió la conexión con la agenda. Recargá la página.');
+      }
+    );
+    stopStudio = db.doc('config/studio').onSnapshot(
+      (snap) => {
+        const data = snap.exists ? snap.data() : null;
+        renderLogo(data && data.logo ? data.logo : '');
+      },
+      () => {}
+    );
+  }
+
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      loginScreen.classList.add('hidden');
+      appEl.classList.remove('hidden');
+      startApp();
+    } else {
+      if (stopAppointments) stopAppointments();
+      if (stopStudio) stopStudio();
+      stopAppointments = null;
+      stopStudio = null;
+      col = null;
+      appointments = [];
+      selectedISO = null;
+      searchInput.value = '';
+      searchResults.innerHTML = '';
+      searchResults.classList.add('hidden');
+      apptListWrap.innerHTML = '';
+      upcomingListEl.innerHTML = '';
+      upcomingSummaryEl.innerHTML = '';
+      listTableBody.innerHTML = '';
+      form.reset();
+      loginPassword.value = '';
+      resetFormExtras();
+      appStarted = false;
+      loginScreen.classList.remove('hidden');
+      appEl.classList.add('hidden');
+    }
+  });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
