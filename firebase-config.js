@@ -1,16 +1,13 @@
-// Pegá acá la configuración de TU proyecto de Firebase.
-// La encontrás en: Firebase Console > ícono de engranaje > "Configuración del proyecto"
-// > pestaña "Tus apps" > app web > "Config" (o "SDK setup and configuration").
-//
-// Reemplazá los valores de ejemplo de abajo por los reales de tu proyecto.
+// Configuración pública del proyecto independiente Valutatto.
+// El acceso a los datos se controla con Authentication y firestore.rules.
 
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROYECTO.firebaseapp.com",
-  projectId: "TU_PROYECTO",
-  storageBucket: "TU_PROYECTO.appspot.com",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyBY0uh7zgIqO5E12_fOmxAMnfm0GSk0YsQ",
+  authDomain: "valutatto-agenda.firebaseapp.com",
+  projectId: "valutatto-agenda",
+  storageBucket: "valutatto-agenda.firebasestorage.app",
+  messagingSenderId: "1028151046048",
+  appId: "1:1028151046048:web:8120c420b471ce5c8efec5"
 };
 
 firebase.initializeApp(firebaseConfig);

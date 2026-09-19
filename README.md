@@ -1,6 +1,6 @@
 # Valutatto — Agenda de turnos
 
-App de agenda para el estudio, independiente de Claude, instalable en el
+App de agenda para el estudio Valutatto, independiente de Forza, instalable en el
 celular y la tablet, con el logo de Valutatto. Guarda los turnos en una
 base de datos gratuita de Google (Firestore) que se sincroniza sola entre
 todos los dispositivos.
@@ -68,9 +68,13 @@ No hace falta saber programar para dejarla funcionando — son pasos de
    **`firestore.rules`** de esta carpeta.
 3. Hacé clic en **"Publicar"**.
 
-Esto asegura que solo las personas que vos diste de alta en
-Authentication puedan ver y cargar turnos — nadie más va a poder
-entrar aunque encuentre el link.
+4. Para cada usuario autorizado, copiá su UID de Authentication y creá
+   desde la consola un documento `members/UID` en Firestore, con el campo
+   `enabled` de tipo booleano y valor `true`. El identificador del documento
+   debe ser exactamente el UID. Para revocar el acceso, eliminá ese documento.
+
+Las reglas permiten ver y cargar turnos solo a usuarios autenticados cuyo
+documento exista en `members`. La app no puede agregar miembros por sí misma.
 
 ## Parte 4 — Agregar el logo de Valutatto como ícono de la app
 
@@ -127,7 +131,8 @@ alcanza de sobra para la cantidad de turnos de un estudio, y GitHub
 Pages es gratis siempre.
 
 **¿Puedo agregar más usuarios después?** Sí, volvés a
-Authentication → Users → Add user, las veces que quieras.
+Authentication → Users → Add user. Después creá su documento `members/UID`
+desde Firestore, como se explica en la Parte 3.
 
 **Se me cerró la sesión, ¿pierdo los turnos?** No. Los turnos viven en
 Firestore, no en el celular. Iniciás sesión de nuevo y volvés a verlos
