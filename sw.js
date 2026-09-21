@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'valutatto-agenda-';
-const CACHE_NAME = CACHE_PREFIX + 'v3';
-const CORE_FILES = ['./', './index.html', './manifest.json'];
+const CACHE_NAME = CACHE_PREFIX + 'v4';
+const CORE_FILES = ['./', './index.html', './manifest.json', './flores-192.png', './flores-512.png', './flores-180.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

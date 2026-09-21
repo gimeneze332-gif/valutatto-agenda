@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Valutatto - Agenda de turnos</title>
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="flores-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Valutatto">
-<meta name="theme-color" content="#18100f">
+<meta name="theme-color" content="#f3f7fc">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,40 +19,40 @@
 <script src="firebase-config.js"></script>
 <style>
   :root {
-    --bg: #18100f;
-    --surface: #241a18;
-    --surface-2: #2e211e;
-    --text: #f3ece6;
-    --muted: #a99a92;
-    --accent: #c9502f;
-    --accent-soft: #c9502f33;
-    --border: #3a2a26;
-    --danger: #8a3a2c;
-    --good: #5a8f6b;
-    --good-soft: #5a8f6b26;
-    --info: #4f8fa3;
-    --info-soft: #4f8fa326;
-    --gold: #c99a3f;
-    --gold-soft: #c99a3f26;
+    --bg: #f3f7fc;
+    --surface: #ffffff;
+    --surface-2: #e7eff8;
+    --text: #24354b;
+    --muted: #576b83;
+    --accent: #32669f;
+    --accent-soft: #32669f18;
+    --border: #cbd9e9;
+    --danger: #b83932;
+    --good: #2e7054;
+    --good-soft: #e3f2e9;
+    --info: #32669f;
+    --info-soft: #e1edfb;
+    --gold: #b83932;
+    --gold-soft: #fce9e7;
     --font-display: 'Fraunces', serif;
     --font-body: 'Inter', -apple-system, sans-serif;
   }
   :root[data-theme="light"] {
-    --bg: #f6f0ea;
+    --bg: #f3f7fc;
     --surface: #ffffff;
-    --surface-2: #f1e8e0;
-    --text: #221714;
-    --muted: #7a6a62;
-    --accent: #c9502f;
-    --accent-soft: #c9502f22;
-    --border: #e3d5cb;
-    --danger: #b23b26;
-    --good: #3f7a52;
-    --good-soft: #3f7a521a;
-    --info: #2f6d80;
-    --info-soft: #2f6d801a;
-    --gold: #a97f2b;
-    --gold-soft: #a97f2b1a;
+    --surface-2: #e7eff8;
+    --text: #24354b;
+    --muted: #576b83;
+    --accent: #32669f;
+    --accent-soft: #32669f18;
+    --border: #cbd9e9;
+    --danger: #b83932;
+    --good: #2e7054;
+    --good-soft: #e3f2e9;
+    --info: #32669f;
+    --info-soft: #e1edfb;
+    --gold: #b83932;
+    --gold-soft: #fce9e7;
   }
 
   * { box-sizing: border-box; }
@@ -710,12 +710,16 @@
   .payment-editor input, .payment-editor select { min-width: 0; width: 100%; }
   .form-payment-row .edit-action { color: var(--text, #fff); padding: 9px 12px; }
   #editHeading { margin: 12px 0; }
+.login-logo { display: block; width: 112px; height: 112px; border-radius: 24px; margin: 0 auto 18px; }
+  h1 span { color: #b83932; }
+  input, select, textarea { color-scheme: light; }
 </style>
 </head>
 <body>
 
 <div id="loginScreen">
   <div class="login-box">
+    <img src="flores-192.png" alt="Logo de Valutatto" class="login-logo">
     <h1>Valutatto<span class="dot">.</span></h1>
     <p class="sub">Agenda de turnos del estudio</p>
     <form id="loginForm">
@@ -730,7 +734,7 @@
 <div id="app" class="hidden">
   <header>
     <div class="logo-wrap" id="logoWrap">
-      <div class="logo-circle" id="logoCircle">✒️</div>
+      <div class="logo-circle" id="logoCircle"><img src="flores-192.png" alt="Logo de Valutatto: tres flores"></div>
       <div class="logo-edit-badge">✎</div>
       <input type="file" id="logoInput" accept="image/*" class="hidden">
     </div>
@@ -1118,10 +1122,10 @@
       img.src = logoDataUrl;
       logoCircle.appendChild(img);
       studioNameLabel.textContent = 'Tocá el logo para cambiarlo';
-      applyPaletteFromDataUrl(logoDataUrl);
+      resetPalette();
     } else {
-      logoCircle.innerHTML = '✒️';
-      studioNameLabel.textContent = 'Tocá el logo para poner la foto de tu estudio';
+      logoCircle.innerHTML = '<img src="flores-192.png" alt="Logo de Valutatto: tres flores">';
+      studioNameLabel.textContent = 'Tocá el logo para cambiarlo';
       resetPalette();
     }
   }
