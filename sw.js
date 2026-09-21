@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'valutatto-agenda-';
-const CACHE_NAME = CACHE_PREFIX + 'v2';
+const CACHE_NAME = CACHE_PREFIX + 'v3';
 const CORE_FILES = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {

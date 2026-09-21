@@ -699,6 +699,17 @@
     text-decoration: underline;
     cursor: pointer;
   }
+
+  .edit-action { background: var(--surface, #30231e); color: var(--text, #fff); border: 1px solid var(--muted); border-radius: 8px; padding: 9px 12px; cursor: pointer; min-height: 40px; }
+  .edit-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  .payment-editor { display: grid; gap: 8px; width: 100%; }
+  .payment-editor label { display: grid; gap: 4px; }
+  .form-payment-row { flex-wrap: wrap; }
+  .payment-row { flex-wrap: wrap; gap: 6px; }
+  .payment-row > span, .form-payment-row > span { overflow-wrap: anywhere; }
+  .payment-editor input, .payment-editor select { min-width: 0; width: 100%; }
+  .form-payment-row .edit-action { color: var(--text, #fff); padding: 9px 12px; }
+  #editHeading { margin: 12px 0; }
 </style>
 </head>
 <body>
@@ -762,6 +773,8 @@
       </div>
       <div id="apptListWrap"></div>
       <form id="apptForm">
+        <h3 id="editHeading">Nuevo turno</h3>
+        <label id="editDateWrap" class="hidden">Fecha del turno<input type="date" id="editDate"></label>
         <div class="row">
           <input type="time" id="apptTime" required>
           <input type="text" id="apptName" placeholder="Nombre del cliente" required maxlength="60">
@@ -809,6 +822,7 @@
 
         <textarea id="apptNotes" placeholder="Diseño, zona del cuerpo, tamaño..." maxlength="300"></textarea>
         <button type="submit" id="submitBtn">Agregar turno</button>
+        <button type="button" id="cancelEditBtn" class="edit-action hidden">Cancelar edición</button>
       </form>
     </div>
   </div>
@@ -855,6 +869,9 @@
   let selectedISO = null;
   let currentView = 'calendar';
   let formPayments = [];
+  let editingId = null;
+  let editingOriginal = null;
+  let editingPaymentIndex = null;
   let pendingRefImage = '';
 
   const todayD = new Date();
@@ -1179,9 +1196,11 @@
     formPayments.forEach((p, idx) => {
       const row = document.createElement('div');
       row.className = 'form-payment-row';
-      row.innerHTML = `<span></span><button type="button">✕</button>`;
+      row.innerHTML = `<span></span><button type="button" class="edit-action payment-edit">Modificar</button><button type="button" class="payment-remove" aria-label="Eliminar pago">✕</button>`;
       row.querySelector('span').textContent = `${methodLabel(p.method)} · ${fmtMoney(p.amount)}${p.label ? ' · ' + p.label : ''}`;
-      row.querySelector('button').addEventListener('click', () => {
+      row.querySelector('.payment-edit').addEventListener('click', () => editFormPayment(idx));
+      row.querySelector('.payment-remove').addEventListener('click', () => {
+        editingPaymentIndex = null;
         formPayments.splice(idx, 1);
         renderFormPayments();
       });
@@ -1189,6 +1208,60 @@
     });
     updatePendingPreview();
   }
+
+
+  function editFormPayment(idx) {
+    editingPaymentIndex = idx;
+    renderFormPayments();
+    const row = formPaymentListEl.children[idx];
+    const payment = formPayments[idx];
+    row.innerHTML = '<div class="payment-editor"><label>Monto<input type="number" min="0.01" step="0.01" required></label><label>Medio de pago<select><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select></label><label>Concepto<input type="text" maxlength="24" placeholder="Seña, cuota..."></label><div class="edit-actions"><button type="button" class="edit-action payment-save">Aplicar cambio</button><button type="button" class="edit-action payment-cancel">Cancelar</button></div></div>';
+    const amount = row.querySelector('input[type="number"]');
+    const method = row.querySelector('select');
+    const label = row.querySelector('input[type="text"]');
+    amount.value = payment.amount;
+    method.value = payment.method;
+    label.value = payment.label || '';
+    row.querySelector('.payment-save').onclick = () => {
+      if (!amount.reportValidity() || !Number.isFinite(Number(amount.value))) return;
+      formPayments[idx] = { ...payment, amount: Number(amount.value), method: method.value, label: label.value.trim() };
+      editingPaymentIndex = null;
+      renderFormPayments();
+    };
+    row.querySelector('.payment-cancel').onclick = () => { editingPaymentIndex = null; renderFormPayments(); };
+    amount.focus();
+  }
+
+  function beginEdit(a, focusBudget = false, paymentIndex = null) {
+    if (editingId && !confirm('¿Descartar la edición actual y abrir este turno?')) return;
+    editingId = null;
+    const [year, month] = a.date.split('-').map(Number);
+    viewYear = year; viewMonth = month - 1;
+    switchView('calendar');
+    selectDay(a.date);
+    form.reset();
+    resetFormExtras();
+    editingId = a.id;
+    editingOriginal = { ...a };
+    document.getElementById('editHeading').textContent = 'Modificar turno';
+    document.getElementById('editDateWrap').classList.remove('hidden');
+    document.getElementById('editDate').value = a.date;
+    document.getElementById('cancelEditBtn').classList.remove('hidden');
+    for (const [id, key] of Object.entries({ apptTime: 'time', apptName: 'name', apptContactType: 'contactType', apptContactValue: 'contactValue', apptClientType: 'clientType', apptBudget: 'budget', apptNotes: 'notes' })) {
+      document.getElementById(id).value = a[key] ?? '';
+    }
+    formPayments = (a.payments || []).map(p => ({ ...p }));
+    pendingRefImage = a.referenceImage || '';
+    refPreviewImg.src = pendingRefImage;
+    refPreviewWrap.classList.toggle('hidden', !pendingRefImage);
+    refDropzone.classList.toggle('hidden', !!pendingRefImage);
+    renderFormPayments();
+    submitBtn.textContent = 'Guardar cambios';
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (focusBudget) apptBudgetInput.focus();
+    if (paymentIndex !== null) editFormPayment(paymentIndex);
+  }
+  document.getElementById('cancelEditBtn').addEventListener('click', () => { form.reset(); resetFormExtras(); });
 
   function updatePendingPreview() {
     const budget = Number(apptBudgetInput.value) || 0;
@@ -1203,6 +1276,7 @@
   apptBudgetInput.addEventListener('input', updatePendingPreview);
 
   addPaymentBtn.addEventListener('click', () => {
+    if (editingPaymentIndex !== null) { showStatus('Aplicá o cancelá la modificación del pago primero.'); return; }
     const amount = Number(newPayAmount.value);
     if (!amount || amount <= 0) return;
     formPayments.push({
@@ -1217,6 +1291,13 @@
   });
 
   function resetFormExtras() {
+    editingId = null;
+    editingOriginal = null;
+    editingPaymentIndex = null;
+    document.getElementById('editHeading').textContent = 'Nuevo turno';
+    document.getElementById('editDateWrap').classList.add('hidden');
+    document.getElementById('cancelEditBtn').classList.add('hidden');
+    submitBtn.textContent = 'Agregar turno';
     formPayments = [];
     pendingRefImage = '';
     refPreviewWrap.classList.add('hidden');
@@ -1335,9 +1416,16 @@
     const refThumb = card.querySelector('.ref-thumb');
     if (refThumb) refThumb.addEventListener('click', () => refThumb.classList.toggle('expanded'));
 
+    const actions = document.createElement('div');
+    actions.className = 'edit-actions';
+    actions.innerHTML = '<button type="button" class="edit-action edit-turn">Modificar turno</button><button type="button" class="edit-action edit-budget">Modificar presupuesto</button>';
+    actions.querySelector('.edit-turn').onclick = () => beginEdit(a);
+    actions.querySelector('.edit-budget').onclick = () => beginEdit(a, true);
+    card.querySelector('.appt-info').appendChild(actions);
+
     // money section
     const moneySlot = card.querySelector('.appt-money-slot');
-    if (pay.budget) {
+    if (pay.budget || pay.payments.length) {
       const moneyDiv = document.createElement('div');
       moneyDiv.className = 'appt-money';
 
@@ -1353,7 +1441,8 @@
         pay.payments.forEach((p, idx) => {
           const row = document.createElement('div');
           row.className = 'payment-row';
-          row.innerHTML = '<span></span><button class="pr-del">✕</button>';
+          row.innerHTML = '<span></span><button type="button" class="edit-action pr-edit">Modificar</button><button class="pr-del" aria-label="Eliminar pago">✕</button>';
+          row.querySelector('.pr-edit').onclick = () => beginEdit(a, false, idx);
           row.querySelector('span').textContent = `${methodLabel(p.method)} · ${fmtMoney(p.amount)}${p.label ? ' · ' + p.label : ''}`;
           row.querySelector('.pr-del').addEventListener('click', () => removePaymentFromAppt(a.id, idx));
           histWrap.appendChild(row);
@@ -1504,7 +1593,7 @@
         <td></td>
         <td></td>
         <td class="tl-pending"></td>
-        <td><button class="tl-del" title="Borrar turno">✕</button></td>
+        <td><button type="button" class="edit-action tl-edit">Modificar</button><button class="tl-del" title="Borrar turno">✕</button></td>
       `;
       const cells = tr.querySelectorAll('td');
       cells[0].textContent = formatDateLabel(a.date);
@@ -1520,19 +1609,24 @@
         cells[7].textContent = '—';
       }
       tr.addEventListener('click', (e) => {
-        if (e.target.closest('.tl-del')) return;
+        if (e.target.closest('.tl-del, .tl-edit')) return;
         const [y, m] = a.date.split('-').map(Number);
         viewYear = y;
         viewMonth = m - 1;
         switchView('calendar');
         selectDay(a.date);
       });
+      tr.querySelector('.tl-edit').onclick = () => beginEdit(a);
       tr.querySelector('.tl-del').addEventListener('click', () => deleteAppt(a.id));
       listTableBody.appendChild(tr);
     });
   }
 
   function selectDay(iso) {
+    if (editingId && iso !== selectedISO) {
+      if (!confirm('¿Descartar los cambios del turno que estás modificando?')) return;
+      form.reset(); resetFormExtras();
+    }
     selectedISO = iso;
     renderCalendar();
     renderDayPanel();
@@ -1643,6 +1737,7 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!col || !selectedISO) return;
+    if (editingPaymentIndex !== null) { showStatus('Aplicá o cancelá el cambio del pago antes de guardar el turno.'); return; }
     const time = document.getElementById('apptTime').value;
     const name = document.getElementById('apptName').value.trim();
     const contactType = document.getElementById('apptContactType').value;
@@ -1655,8 +1750,8 @@
     submitBtn.disabled = true;
     submitBtn.textContent = 'Guardando...';
     try {
-      await col.add({
-        date: selectedISO,
+      const data = {
+        date: editingId ? document.getElementById('editDate').value : selectedISO,
         time,
         name,
         contactType,
@@ -1665,16 +1760,32 @@
         budget: budget ? Number(budget) : 0,
         payments: formPayments.slice(),
         referenceImage: pendingRefImage,
-        notes,
-        createdAt: Date.now()
-      });
+        notes
+      };
+      if (!data.date) throw new Error('Indicá la fecha del turno.');
+      if (editingId) {
+        const ref = col.doc(editingId);
+        const original = editingOriginal;
+        await db.runTransaction(async transaction => {
+          const snapshot = await transaction.get(ref);
+          if (!snapshot.exists) throw new Error('Este turno ya fue eliminado. Cancelá la edición.');
+          const current = snapshot.data();
+          if (Object.keys(data).some(key => JSON.stringify(current[key] ?? null) !== JSON.stringify(original[key] ?? null))) {
+            throw new Error('El turno cambió en otro dispositivo. Cancelá la edición y volvé a abrirlo para ver los datos nuevos.');
+          }
+          transaction.update(ref, data);
+        });
+      } else {
+        await col.add({ ...data, createdAt: Date.now() });
+      }
+      showStatus(editingId ? 'Cambios guardados.' : 'Turno agregado.');
       form.reset();
       resetFormExtras();
     } catch (err) {
-      showStatus('No se pudo guardar el turno. Probá de nuevo en unos segundos.');
+      showStatus(err.message && !err.code ? err.message : 'No se pudo guardar el turno. Probá de nuevo en unos segundos.');
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Agregar turno';
+      submitBtn.textContent = editingId ? 'Guardar cambios' : 'Agregar turno';
     }
   });
 
